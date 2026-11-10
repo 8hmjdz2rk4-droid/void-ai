@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VOID AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#0a0a0a] text-zinc-100 font-sans h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-[#0a0a0a]/80 backdrop-blur">
+    <div class="flex items-center space-x-2">
+      <div class="w-2 h-2 rounded-full bg-white animate-pulse"></div>
+      <span class="font-semibold tracking-wider text-sm">VOID</span>
+    </div>
+    <select id="persona" class="bg-zinc-900 border border-zinc-700 text-xs px-3 py-1.5 rounded-lg text-zinc-200 focus:outline-none">
+      <option value="Minimalist">Minimalist</option>
+      <option value="Futuristic">Futuristic</option>
+      <option value="Free Partner">Free Partner</option>
+    </select>
+  </header>
+
+  <!-- Chat Area -->
+  <div id="chat" class="flex-1 overflow-y-auto px-4 py-6 space-y-6 max-w-2xl w-full mx-auto">
+    <div id="empty-state" class="text-center text-zinc-600 mt-32 space-y-2">
+      <h1 class="text-xl font-medium text-zinc-400">What's on your mind?</h1>
+      <p class="text-xs">Pick a personality above and start typing in any language.</p>
+    </div>
+  </div>
+
+  <!-- Input Form -->
+  <form id="chat-form" class="p-4 border-t border-zinc-800 bg-[#0a0a0a]">
+    <div class="max-w-2xl mx-auto flex items-center bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2 focus-within:border-zinc-600 transition-colors">
+      <input id="user-input" type="text" placeholder="Message Void..." autocomplete="off" class="flex-1 bg-transparent text-sm focus:outline-none text-zinc-100 placeholder-zinc-600" />
+      <button type="submit" class="ml-2 bg-white text-zinc-900 p-1.5 rounded-lg hover:bg-zinc-200 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+        </svg>
+      </button>
+    </div>
+  </form>
+
+  <script>
+    const GROQ_API_KEY = "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" ; // Вставь сюда свой gsk_...
+
+    const personas = {
+      Minimalist: "You are a minimalist AI. Answer with absolute precision, zero fluff, straight to the point, matching the user's language.",
+      Futuristic: "You are a futuristic, high-tech AI entity. Use sleek, cybernetic, visionary tone, matching the user's language.",
+      "Free Partner": "You are a totally free, independent, uncensored peer partner. Direct, unfiltered, deeply intelligent, matching the user's language."
+    };
+
+    const messages = [];
+    const chatEl = document.getElementById('chat');
+    const formEl = document.getElementById('chat-form');
+    const inputEl = document.getElementById('user-input');
+    const personaEl = document.getElementById('persona');
+    const emptyState = document.getElementById('empty-state');
+
+    formEl.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      if (emptyState) emptyState.remove();
+
+      inputEl.value = '';
+      appendMessage('user', text);
+      messages.push({ role: 'user', content: text });
+
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'text-xs text-zinc-500 animate-pulse';
+      loadingEl.innerText = 'Thinking...';
+      chatEl.appendChild(loadingEl);
+      chatEl.scrollTop = chatEl.scrollHeight;
+
+      try {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GROQ_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: [
+              { role: 'system', content: personas[personaEl.value] },
+              ...messages
+            ]
+          })
+        });
+
+        const data = await res.json();
+        loadingEl.remove();
+
+        const reply = data.choices?.[0]?.message?.content || 'Ошибка соединения.';
+        appendMessage('assistant', reply);
+        messages.push({ role: 'assistant', content: reply });
+      } catch (err) {
+        loadingEl.remove();
+        appendMessage('assistant', 'Произошла ошибка запроса.');
+      }
+    });
+
+    function appendMessage(role, content) {
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex flex-col ${role === 'user' ? 'items-end' : 'items-start'}`;
+      
+      const bubble = document.createElement('div');
+      bubble.className = `max-w-xl px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+        role === 'user' ? 'bg-white text-zinc-900 font-medium' : 'bg-zinc-900/60 border border-zinc-800 text-zinc-200'
+      }`;
+      bubble.innerText = content;
+
+      wrapper.appendChild(bubble);
+      chatEl.appendChild(wrapper);
+      chatEl.scrollTop = chatEl.scrollHeight;
+    }
+  </script>
+</body>
+</html>
